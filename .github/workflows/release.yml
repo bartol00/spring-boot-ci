@@ -10,6 +10,10 @@ on:
       bump-type:
         required: true
         type: string
+      bump-protocol-on-major:
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -57,6 +61,25 @@ jobs:
       - name: Maven version bump
         run: |
           mvn versions:set -DnewVersion=${{ steps.version.outputs.new }} -DgenerateBackupPoms=false
+
+      - name: Bump protocol version
+        if: inputs.bump-protocol-on-major == true && inputs.bump-type == 'major'
+        run: |
+          if grep -q "<segurapass.protocol.version>" pom.xml; then
+
+            CURRENT=$(grep -oP '(?<=<segurapass.protocol.version>)[^<]+' pom.xml)
+
+            NEXT=$((CURRENT + 1))
+
+            sed -i \
+              "s#<segurapass.protocol.version>$CURRENT</segurapass.protocol.version>#<segurapass.protocol.version>$NEXT</segurapass.protocol.version>#" \
+              pom.xml
+
+            echo "Protocol version bumped: $CURRENT -> $NEXT"
+
+          else
+            echo "No protocol version found, skipping"
+          fi
 
       - name: Commit bump
         run: |
